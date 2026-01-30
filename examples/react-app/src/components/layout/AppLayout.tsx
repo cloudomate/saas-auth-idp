@@ -1,10 +1,8 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { useSaasAuth, useTenant, useWorkspaces } from '@saas-starter/react'
+import { useAuth } from '../../contexts/AuthContext'
 
 export function AppLayout() {
-  const { user, logout } = useSaasAuth()
-  const { tenant } = useTenant()
-  const { workspaces, currentWorkspace, setCurrentWorkspace } = useWorkspaces()
+  const { user, logout } = useAuth()
 
   const getInitials = (name: string) => {
     return name
@@ -20,7 +18,7 @@ export function AppLayout() {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>{tenant?.display_name || 'My App'}</h2>
+          <h2>{user?.organization || 'My App'}</h2>
         </div>
 
         <nav className="sidebar-nav">
@@ -96,29 +94,22 @@ export function AppLayout() {
         {/* Top bar */}
         <header className="top-bar">
           <div className="workspace-selector">
-            <span>Workspace:</span>
-            <select
-              value={currentWorkspace?.id || ''}
-              onChange={(e) => setCurrentWorkspace(e.target.value)}
-            >
-              {workspaces.map((ws) => (
-                <option key={ws.id} value={ws.id}>
-                  {ws.display_name}
-                </option>
-              ))}
-            </select>
+            <span>Organization: {user?.organization}</span>
           </div>
 
           <div className="user-menu">
             <div className="user-info">
               <div className="user-avatar">
-                {user?.picture ? (
-                  <img src={user.picture} alt={user.name} />
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user.displayName} />
                 ) : (
-                  getInitials(user?.name || 'U')
+                  getInitials(user?.displayName || user?.name || 'U')
                 )}
               </div>
-              <span>{user?.name}</span>
+              <span>{user?.displayName || user?.name}</span>
+              {user?.isGlobalAdmin && (
+                <span className="badge badge-admin">Admin</span>
+              )}
             </div>
           </div>
         </header>

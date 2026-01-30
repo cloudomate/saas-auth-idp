@@ -1,8 +1,54 @@
+import { useState, FormEvent } from 'react'
 import { useSaasAuth, useTenant } from '@saas-starter/react'
+import { useAuth } from '../../contexts/AuthContext'
 
 export function SettingsPage() {
   const { user, refreshUser } = useSaasAuth()
   const { tenant, plan, subscription, refreshTenant } = useTenant()
+  const { changePassword, isLoading, error, clearError } = useAuth()
+
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+
+  const handlePasswordChange = async (e: FormEvent) => {
+    e.preventDefault()
+    setPasswordError(null)
+    setPasswordSuccess(false)
+    clearError()
+
+    if (!oldPassword.trim()) {
+      setPasswordError('Current password is required')
+      return
+    }
+
+    if (!newPassword.trim()) {
+      setPasswordError('New password is required')
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters')
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match')
+      return
+    }
+
+    try {
+      await changePassword(oldPassword, newPassword)
+      setPasswordSuccess(true)
+      setOldPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      // Error is handled by context
+    }
+  }
 
   return (
     <div>
@@ -83,6 +129,75 @@ export function SettingsPage() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Change Password */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">Change Password</div>
+          </div>
+
+          {passwordSuccess && (
+            <div className="alert alert-success" style={{ marginBottom: '1rem' }}>
+              Password changed successfully!
+            </div>
+          )}
+
+          {(passwordError || error) && (
+            <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
+              {passwordError || error}
+            </div>
+          )}
+
+          <form onSubmit={handlePasswordChange}>
+            <div className="form-group">
+              <label htmlFor="oldPassword">Current Password</label>
+              <input
+                id="oldPassword"
+                type="password"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                placeholder="Enter current password"
+                disabled={isLoading}
+                autoComplete="current-password"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="newPassword">New Password</label>
+              <input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                disabled={isLoading}
+                autoComplete="new-password"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="confirmPassword">Confirm New Password</label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                disabled={isLoading}
+                autoComplete="new-password"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={isLoading}
+              style={{ marginTop: '0.5rem' }}
+            >
+              {isLoading ? 'Changing...' : 'Change Password'}
+            </button>
+          </form>
         </div>
 
         {/* Organization Settings */}

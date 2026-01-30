@@ -6,16 +6,12 @@ WORKDIR /app
 # Install git for go mod download
 RUN apk add --no-cache git
 
-# Copy go mod files
-COPY go.mod go.sum* ./
-
-# Download dependencies
-RUN go mod download
-
-# Copy source code
+# Copy go mod files and source code
+COPY go.mod ./
 COPY . .
 
-# Build the binary
+# Tidy dependencies and build
+RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 # Production stage

@@ -1,0 +1,166 @@
+{
+  "organizations": [
+    {
+      "owner": "admin",
+      "name": "saas-platform",
+      "createdTime": "2024-01-01T00:00:00Z",
+      "displayName": "SaaS Platform",
+      "websiteUrl": "http://localhost:3000",
+      "favicon": "",
+      "passwordType": "plain",
+      "passwordSalt": "",
+      "phonePrefix": "1",
+      "defaultAvatar": "",
+      "masterPassword": "",
+      "enableSoftDeletion": false
+    }
+  ],
+  "applications": [
+    {
+      "owner": "admin",
+      "name": "saas-app",
+      "createdTime": "2024-01-01T00:00:00Z",
+      "displayName": "SaaS Platform",
+      "logo": "",
+      "homepageUrl": "http://localhost:3000",
+      "description": "SaaS Platform Application",
+      "organization": "saas-platform",
+      "cert": "saas-cert",
+      "enablePassword": true,
+      "enableSignUp": true,
+      "enableSigninSession": true,
+      "enableAutoSignin": false,
+      "enableCodeSignin": true,
+      "grantTypes": ["authorization_code", "password", "client_credentials", "token", "id_token"],
+      "clientId": "saas-client-id",
+      "clientSecret": "saas-client-secret",
+      "redirectUris": [
+        "http://localhost:3000/callback",
+        "http://localhost:4455/api/v1/auth/callback"
+      ],
+      "tokenFormat": "JWT",
+      "expireInHours": 24,
+      "refreshExpireInHours": 168,
+      "providers": [
+        {
+          "name": "provider_google",
+          "canSignUp": true,
+          "canSignIn": true,
+          "canUnlink": true,
+          "prompted": false,
+          "alertType": "None"
+        },
+        {
+          "name": "provider_github",
+          "canSignUp": true,
+          "canSignIn": true,
+          "canUnlink": true,
+          "prompted": false,
+          "alertType": "None"
+        }
+      ],
+      "signupItems": [
+        {
+          "name": "ID",
+          "visible": false,
+          "required": true,
+          "prompted": false,
+          "rule": "Random"
+        },
+        {
+          "name": "Username",
+          "visible": true,
+          "required": true,
+          "prompted": false,
+          "rule": "None"
+        },
+        {
+          "name": "Display name",
+          "visible": true,
+          "required": false,
+          "prompted": false,
+          "rule": "None"
+        },
+        {
+          "name": "Password",
+          "visible": true,
+          "required": true,
+          "prompted": false,
+          "rule": "None"
+        },
+        {
+          "name": "Confirm password",
+          "visible": true,
+          "required": true,
+          "prompted": false,
+          "rule": "None"
+        },
+        {
+          "name": "Email",
+          "visible": true,
+          "required": true,
+          "prompted": false,
+          "rule": "None"
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "owner": "saas-platform",
+      "name": "admin@localhost",
+      "createdTime": "2024-01-01T00:00:00Z",
+      "id": "admin",
+      "type": "normal-user",
+      "password": "admin123",
+      "displayName": "Platform Admin",
+      "avatar": "",
+      "email": "admin@localhost",
+      "phone": "",
+      "address": [],
+      "affiliation": "",
+      "tag": "",
+      "region": "",
+      "isAdmin": true,
+      "isGlobalAdmin": true,
+      "isForbidden": false,
+      "isDeleted": false,
+      "signupApplication": "saas-app",
+      "createdIp": "",
+      "properties": {
+        "passwordChangeRequired": "true"
+      }
+    }
+  ],
+  "certs": [
+    {
+      "owner": "admin",
+      "name": "saas-cert",
+      "createdTime": "2024-01-01T00:00:00Z",
+      "displayName": "SaaS Certificate",
+      "scope": "JWT",
+      "type": "x509",
+      "cryptoAlgorithm": "RS256",
+      "bitSize": 4096,
+      "expireInYears": 20
+    }
+  ],
+  "providers": [
+    {
+      "owner": "admin",
+      "name": "provider_google",
+      "createdTime": "2024-01-01T00:00:00Z",
+      "displayName": "Google",
+      "category": "OAuth",
+      "type": "Google"
+    },
+    {
+      "name": "provider_github",
+      "owner": "admin",
+      "createdTime": "2024-01-01T00:00:00Z",
+      "displayName": "GitHub",
+      "category": "OAuth",
+      "type": "GitHub"
+    }
+  ]
+}

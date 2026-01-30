@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useSaasAuth } from '@saas-starter/react'
+import { useAuth } from '../../contexts/AuthContext'
 
 export function OAuthCallbackPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { handleOAuthCallback } = useSaasAuth()
+  const { handleCallback } = useAuth()
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -18,8 +18,8 @@ export function OAuthCallbackPage() {
       return
     }
 
-    if (code && state) {
-      handleOAuthCallback(code, state)
+    if (code) {
+      handleCallback(code, state || '')
         .then(() => {
           navigate('/')
         })
@@ -29,7 +29,7 @@ export function OAuthCallbackPage() {
     } else {
       setError('Invalid callback parameters')
     }
-  }, [searchParams, handleOAuthCallback, navigate])
+  }, [searchParams, handleCallback, navigate])
 
   if (error) {
     return (

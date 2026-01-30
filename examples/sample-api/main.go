@@ -10,6 +10,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/yourusername/sample-api/internal/authz"
+	"github.com/yourusername/sample-api/internal/casdoor"
 	"github.com/yourusername/sample-api/internal/handlers"
 	"github.com/yourusername/sample-api/internal/middleware"
 	"github.com/yourusername/sample-api/internal/store"
@@ -35,22 +36,43 @@ func main() {
 		log.Println("No OpenFGA store ID configured - using mock authorization")
 	}
 
+	// Check auth mode
+	authMode := getEnv("AUTH_MODE", "gateway")
+	log.Printf("Auth mode: %s", authMode)
+
+	// Initialize Casdoor client (only needed for direct mode)
+	var casdoorClient *casdoor.Client
+	if authMode == "direct" {
+		casdoorClient, err = casdoor.NewClientFromEnv()
+		if err != nil {
+			log.Printf("Warning: Casdoor client initialization failed: %v", err)
+			log.Println("Falling back to header-based auth")
+		} else {
+			log.Printf("Casdoor client initialized: %s", getEnv("CASDOOR_ENDPOINT", "http://localhost:8100"))
+		}
+	} else {
+		log.Println("Gateway mode: trusting headers from Traefik/AuthZ service")
+	}
+
 	// Initialize in-memory store (replace with real DB in production)
 	dataStore := store.NewMemoryStore()
 
-	// Seed some sample data
+	// Seed sample data (Casdoor manages users, we just need tenant/workspace data)
+	seedSampleData(dataStore)
 	seedData(dataStore)
 
 	// Initialize handlers
 	docHandler := handlers.NewDocumentHandler(dataStore, fgaClient)
 	projectHandler := handlers.NewProjectHandler(dataStore, fgaClient)
+	adminHandler := handlers.NewAdminHandler(dataStore)
+	authHandler := handlers.NewAuthHandler(casdoorClient)
 
 	// Setup router
 	r := gin.Default()
 
 	// CORS
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173"},
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:4455"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Authorization", "Content-Type", "X-User-ID", "X-Tenant-ID", "X-Workspace-ID"},
 		AllowCredentials: true,
@@ -61,9 +83,36 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// API routes - these expect headers from the AuthZ service
+	// Auth routes (public - headless mode)
+	authRoutes := r.Group("/api/v1/auth")
+	{
+		authRoutes.GET("/config", authHandler.GetConfig)
+		authRoutes.POST("/login", authHandler.Login)           // Headless login
+		authRoutes.POST("/register", authHandler.Register)     // Headless registration
+		authRoutes.POST("/callback", authHandler.Callback)     // OAuth code exchange
+		authRoutes.POST("/logout", authHandler.Logout)
+		authRoutes.GET("/social/:provider", authHandler.GetSocialLoginURL) // Get OAuth URL
+		// Protected auth routes (require authentication)
+		if authMode == "direct" && casdoorClient != nil {
+			authRoutes.GET("/me", middleware.CasdoorAuth(casdoorClient), authHandler.GetMe)
+			authRoutes.POST("/change-password", middleware.CasdoorAuth(casdoorClient), authHandler.ChangePassword)
+		} else {
+			authRoutes.GET("/me", middleware.ExtractAuthHeaders(), authHandler.GetMe)
+			authRoutes.POST("/change-password", middleware.ExtractAuthHeaders(), authHandler.ChangePassword)
+		}
+	}
+
+	// API routes - use appropriate auth middleware based on mode
 	api := r.Group("/api/v1")
-	api.Use(middleware.ExtractAuthHeaders())
+	if authMode == "direct" && casdoorClient != nil {
+		// Direct mode: validate Casdoor JWT in this service
+		api.Use(middleware.CasdoorAuth(casdoorClient))
+		log.Println("API using direct Casdoor JWT validation")
+	} else {
+		// Gateway mode: trust headers from Traefik/AuthZ
+		api.Use(middleware.ExtractAuthHeaders())
+		log.Println("API using gateway headers (X-User-ID, X-Tenant-ID, etc.)")
+	}
 	{
 		// Document routes (ReBAC example)
 		docs := api.Group("/documents")
@@ -113,11 +162,74 @@ func main() {
 
 			c.JSON(http.StatusOK, gin.H{"allowed": allowed})
 		})
+
+		// Admin routes (require platform admin)
+		admin := api.Group("/admin")
+		admin.Use(middleware.RequirePlatformAdmin())
+		{
+			// Platform stats
+			admin.GET("/stats", adminHandler.GetStats)
+
+			// User management
+			admin.GET("/users", adminHandler.ListUsers)
+			admin.GET("/users/:id", adminHandler.GetUser)
+			admin.PUT("/users/:id/admin", adminHandler.UpdateUserAdmin)
+			admin.DELETE("/users/:id", adminHandler.DeleteUser)
+
+			// Tenant management
+			admin.GET("/tenants", adminHandler.ListTenants)
+			admin.GET("/tenants/:id", adminHandler.GetTenant)
+			admin.DELETE("/tenants/:id", adminHandler.DeleteTenant)
+
+			// Workspace management
+			admin.GET("/workspaces", adminHandler.ListWorkspaces)
+			admin.DELETE("/workspaces/:id", adminHandler.DeleteWorkspace)
+
+			// View all resources
+			admin.GET("/documents", adminHandler.ListAllDocuments)
+			admin.GET("/projects", adminHandler.ListAllProjects)
+		}
 	}
 
 	port := getEnv("PORT", "8001")
 	log.Printf("Sample API server starting on port %s", port)
 	r.Run(":" + port)
+}
+
+func seedSampleData(s *store.MemoryStore) {
+	// Create sample tenants (organizations in Casdoor map to tenants here)
+	tenants := []*store.Tenant{
+		{
+			ID:      "built-in",
+			Name:    "Platform (Built-in)",
+			Slug:    "built-in",
+			Plan:    "enterprise",
+			OwnerID: "admin",
+		},
+	}
+
+	for _, tenant := range tenants {
+		if err := s.CreateTenant(tenant); err != nil {
+			log.Printf("Warning: Could not create tenant %s: %v", tenant.Name, err)
+		}
+	}
+
+	// Create sample workspaces
+	workspaces := []*store.Workspace{
+		{
+			ID:       "workspace-default",
+			Name:     "Default Workspace",
+			TenantID: "built-in",
+		},
+	}
+
+	for _, workspace := range workspaces {
+		if err := s.CreateWorkspace(workspace); err != nil {
+			log.Printf("Warning: Could not create workspace %s: %v", workspace.Name, err)
+		}
+	}
+
+	log.Printf("Seeded %d tenants, %d workspaces", len(tenants), len(workspaces))
 }
 
 func seedData(s *store.MemoryStore) {

@@ -51,7 +51,7 @@ services:
       OPENFGA_LOG_FORMAT: json
     ports:
       - "8081:8080"    # OpenFGA API
-      - "3001:3000"    # OpenFGA Playground
+      - "3002:3000"    # OpenFGA Playground
     depends_on:
       openfga-migrate:
         condition: service_completed_successfully
@@ -78,6 +78,93 @@ services:
       - examples-network
 
   # =============================================================================
+  # Casdoor - Identity Provider (User Management, SSO, Social Login)
+  # =============================================================================
+  casdoor:
+    image: casbin/casdoor:latest
+    container_name: examples-casdoor
+    # No external port - Casdoor only accessible via internal network
+    # Access admin UI via: docker exec -it examples-casdoor wget -qO- http://localhost:8000
+    expose:
+      - "8000"
+    environment:
+      # Database Configuration
+      RUNNING_IN_DOCKER: "true"
+      driverName: postgres
+      dataSourceName: "user=examples password=examples_password host=postgres port=5432 sslmode=disable dbname=casdoor"
+      # Casdoor Configuration
+      appname: casdoor
+      httpport: 8000
+      origin: ${CASDOOR_ORIGIN:-http://localhost:4455}
+      # Session Configuration
+      SessionOn: "true"
+      copyrequestbody: "true"
+    volumes:
+      - ./deploy/casdoor/app.conf:/conf/app.conf:ro
+      - ./deploy/casdoor/init_data.json:/init_data.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - examples-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =============================================================================
+  # Traefik - API Gateway
+  # =============================================================================
+  traefik:
+    image: traefik:v3.0
+    container_name: examples-traefik
+    ports:
+      - "4455:4455"    # API Gateway
+      - "8180:8080"    # Traefik Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./deploy/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./deploy/traefik/dynamic.yml:/etc/traefik/dynamic/dynamic.yml:ro
+    depends_on:
+      - authz
+    networks:
+      - examples-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # AuthZ Service - ForwardAuth (JWT Validation + OpenFGA Permissions)
+  # =============================================================================
+  authz:
+    build:
+      context: ./authz-service
+      dockerfile: Dockerfile
+    container_name: examples-authz
+    environment:
+      PORT: "8002"
+      GIN_MODE: release
+      # Casdoor Configuration
+      CASDOOR_ENDPOINT: http://casdoor:8000
+      CASDOOR_ORGANIZATION: ${CASDOOR_ORGANIZATION:-saas-platform}
+      CASDOOR_APPLICATION: ${CASDOOR_APPLICATION:-saas-app}
+      # OpenFGA Configuration
+      OPENFGA_URL: http://openfga:8080
+      OPENFGA_STORE_ID_FILE: /shared/openfga-store-id
+      # Dev Mode (bypass auth)
+      DEV_MODE: ${DEV_MODE:-false}
+    volumes:
+      - shared_data:/shared
+    depends_on:
+      openfga-setup:
+        condition: service_completed_successfully
+      casdoor:
+        condition: service_healthy
+    networks:
+      - examples-network
+    restart: unless-stopped
+
+  # =============================================================================
   # Sample API (Go backend - ReBAC/ABAC demo)
   # =============================================================================
   sample-api:
@@ -92,15 +179,16 @@ services:
       GIN_MODE: release
       OPENFGA_URL: http://openfga:8080
       OPENFGA_STORE_ID_FILE: /shared/openfga-store-id
-      # Google OAuth Configuration
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      OAUTH_REDIRECT_URI: ${OAUTH_REDIRECT_URI:-http://localhost:3000/auth/callback}
-      # JWT Configuration
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400}
       # App URLs
       APP_URL: ${APP_URL:-http://localhost:3000}
+      # Auth mode: "gateway" (trust headers from Traefik/AuthZ) or "direct" (validate Casdoor JWT directly)
+      AUTH_MODE: ${AUTH_MODE:-gateway}
+      # Casdoor Configuration
+      CASDOOR_ENDPOINT: http://casdoor:8000
+      CASDOOR_ORGANIZATION: ${CASDOOR_ORGANIZATION:-saas-platform}
+      CASDOOR_APPLICATION: ${CASDOOR_APPLICATION:-saas-app}
+      CASDOOR_CLIENT_ID: ${CASDOOR_CLIENT_ID:-saas-client-id}
+      CASDOOR_CLIENT_SECRET: ${CASDOOR_CLIENT_SECRET:-saas-client-secret}
     volumes:
       - shared_data:/shared
     depends_on:
@@ -111,20 +199,49 @@ services:
     restart: unless-stopped
 
   # =============================================================================
-  # React Frontend Application
+  # React Frontend Application (User App)
   # =============================================================================
   react-app:
     build:
       context: ../
       dockerfile: examples/react-app/Dockerfile
       args:
-        VITE_API_URL: ${API_URL:-http://localhost:8001}
-        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+        VITE_API_URL: ${GATEWAY_URL:-http://localhost:4455}
+        VITE_CASDOOR_ENDPOINT: ${CASDOOR_ENDPOINT:-http://localhost:4455}
+        VITE_CASDOOR_CLIENT_ID: ${CASDOOR_CLIENT_ID:-}
+        VITE_CASDOOR_ORGANIZATION: ${CASDOOR_ORGANIZATION:-saas-platform}
+        VITE_CASDOOR_APPLICATION: ${CASDOOR_APPLICATION:-saas-app}
     container_name: examples-react-app
     ports:
       - "3000:80"
     depends_on:
-      - sample-api
+      - traefik
+      - casdoor
+    environment:
+      - NODE_ENV=production
+    networks:
+      - examples-network
+    restart: unless-stopped
+
+  # =============================================================================
+  # Admin Portal Application
+  # =============================================================================
+  admin-app:
+    build:
+      context: ./admin-app
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${GATEWAY_URL:-http://localhost:4455}
+        VITE_CASDOOR_ENDPOINT: ${CASDOOR_ENDPOINT:-http://localhost:4455}
+        VITE_CASDOOR_CLIENT_ID: ${CASDOOR_CLIENT_ID:-}
+        VITE_CASDOOR_ORGANIZATION: ${CASDOOR_ORGANIZATION:-saas-platform}
+        VITE_CASDOOR_APPLICATION: ${CASDOOR_APPLICATION:-saas-app}
+    container_name: examples-admin-app
+    ports:
+      - "3001:80"
+    depends_on:
+      - traefik
+      - casdoor
     environment:
       - NODE_ENV=production
     networks:

@@ -1,17 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { ProtectedRoute } from '@saas-starter/react'
+import { useAuth } from './contexts/AuthContext'
 
 // Auth pages
 import { LoginPage } from './pages/auth/LoginPage'
 import { RegisterPage } from './pages/auth/RegisterPage'
-import { VerifyEmailPage } from './pages/auth/VerifyEmailPage'
-import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage'
-import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
 import { OAuthCallbackPage } from './pages/auth/OAuthCallbackPage'
-
-// Onboarding pages
-import { SelectPlanPage } from './pages/onboarding/SelectPlanPage'
-import { SetupOrgPage } from './pages/onboarding/SetupOrgPage'
 
 // App pages
 import { DashboardPage } from './pages/app/DashboardPage'
@@ -24,44 +17,39 @@ import { ProjectsPage } from './pages/app/ProjectsPage'
 // Layout
 import { AppLayout } from './components/layout/AppLayout'
 
+// Protected Route wrapper
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <div className="loading">Loading...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  return <>{children}</>
+}
+
 function App() {
   return (
     <Routes>
       {/* Public auth routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/verify-email" element={<VerifyEmailPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/callback" element={<OAuthCallbackPage />} />
       <Route path="/auth/callback" element={<OAuthCallbackPage />} />
-
-      {/* Onboarding routes (auth required, no tenant) */}
-      <Route
-        path="/onboarding/plan"
-        element={
-          <ProtectedRoute fallback={<Navigate to="/login" replace />}>
-            <SelectPlanPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/onboarding/setup"
-        element={
-          <ProtectedRoute fallback={<Navigate to="/login" replace />}>
-            <SetupOrgPage />
-          </ProtectedRoute>
-        }
-      />
 
       {/* Protected app routes */}
       <Route
         path="/"
         element={
-          <ProtectedRoute
-            fallback={<Navigate to="/login" replace />}
-            requireTenant
-            tenantSetupFallback={<Navigate to="/onboarding/plan" replace />}
-          >
+          <ProtectedRoute>
             <AppLayout />
           </ProtectedRoute>
         }
