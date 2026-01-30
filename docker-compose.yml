@@ -1,0 +1,140 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # Database
+  # =============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: saas-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-saas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saas_password}
+      POSTGRES_DB: ${POSTGRES_DB:-saas_starter}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-saas}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # =============================================================================
+  # API Gateway (Traefik)
+  # =============================================================================
+  traefik:
+    image: traefik:v3.0
+    container_name: saas-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
+    ports:
+      - "4455:80"      # Main API gateway
+      - "8080:8080"    # Traefik dashboard
+    volumes:
+      - ./deploy/traefik:/etc/traefik/dynamic:ro
+    depends_on:
+      - api
+      - authz
+
+  # =============================================================================
+  # Identity Provider (Casdoor)
+  # =============================================================================
+  casdoor:
+    image: casbin/casdoor:latest
+    container_name: saas-casdoor
+    environment:
+      RUNNING_IN_DOCKER: "true"
+    volumes:
+      - ./deploy/casdoor/app.conf:/conf/app.conf
+      - ./deploy/casdoor/init_data.json:/init_data.json
+    ports:
+      - "8085:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # =============================================================================
+  # Authorization Service (OpenFGA)
+  # =============================================================================
+  openfga:
+    image: openfga/openfga:latest
+    container_name: saas-openfga
+    command: run
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://${POSTGRES_USER:-saas}:${POSTGRES_PASSWORD:-saas_password}@postgres:5432/openfga?sslmode=disable
+      OPENFGA_LOG_FORMAT: json
+    ports:
+      - "8081:8080"    # OpenFGA API
+      - "3000:3000"    # OpenFGA Playground
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # =============================================================================
+  # AuthZ Service (ForwardAuth)
+  # =============================================================================
+  authz:
+    build:
+      context: ./authz
+      dockerfile: Dockerfile
+    container_name: saas-authz
+    environment:
+      PORT: "8002"
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      API_KEY_SECRET: ${API_KEY_SECRET:-your-api-key-secret-change-in-production}
+      DATABASE_URL: postgres://${POSTGRES_USER:-saas}:${POSTGRES_PASSWORD:-saas_password}@postgres:5432/${POSTGRES_DB:-saas_starter}?sslmode=disable
+      OPENFGA_URL: http://openfga:8080
+      OPENFGA_STORE_ID: ${OPENFGA_STORE_ID:-}
+      DEV_MODE: ${DEV_MODE:-true}
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      openfga:
+        condition: service_started
+
+  # =============================================================================
+  # Backend API
+  # =============================================================================
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saas-api
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-saas}:${POSTGRES_PASSWORD:-saas_password}@postgres:5432/${POSTGRES_DB:-saas_starter}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      PORT: "8000"
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      APP_URL: ${APP_URL:-http://localhost:4455}
+      # Casdoor (IdP)
+      CASDOOR_ENDPOINT: http://casdoor:8000
+      CASDOOR_CLIENT_ID: ${CASDOOR_CLIENT_ID:-saas-client-id}
+      CASDOOR_CLIENT_SECRET: ${CASDOOR_CLIENT_SECRET:-saas-client-secret}
+      # OAuth (direct - optional)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      # OpenFGA
+      OPENFGA_URL: http://openfga:8080
+      OPENFGA_STORE_ID: ${OPENFGA_STORE_ID:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      openfga:
+        condition: service_started
+
+volumes:
+  postgres_data:

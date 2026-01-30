@@ -1,0 +1,30 @@
+{
+  "root_level": "tenant",
+  "leaf_level": "project",
+  "levels": [
+    {
+      "name": "tenant",
+      "display_name": "Organization",
+      "plural": "organizations",
+      "url_path": "tenant",
+      "roles": ["admin", "member"],
+      "is_root": true
+    },
+    {
+      "name": "team",
+      "display_name": "Team",
+      "plural": "teams",
+      "url_path": "teams",
+      "roles": ["lead", "member"],
+      "is_root": false
+    },
+    {
+      "name": "project",
+      "display_name": "Project",
+      "plural": "projects",
+      "url_path": "projects",
+      "roles": ["admin", "contributor", "viewer"],
+      "is_root": false
+    }
+  ]
+}

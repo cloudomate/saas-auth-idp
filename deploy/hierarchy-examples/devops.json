@@ -1,0 +1,30 @@
+{
+  "root_level": "tenant",
+  "leaf_level": "service",
+  "levels": [
+    {
+      "name": "tenant",
+      "display_name": "Organization",
+      "plural": "organizations",
+      "url_path": "tenant",
+      "roles": ["admin", "member"],
+      "is_root": true
+    },
+    {
+      "name": "environment",
+      "display_name": "Environment",
+      "plural": "environments",
+      "url_path": "environments",
+      "roles": ["admin", "operator"],
+      "is_root": false
+    },
+    {
+      "name": "service",
+      "display_name": "Service",
+      "plural": "services",
+      "url_path": "services",
+      "roles": ["admin", "developer", "viewer"],
+      "is_root": false
+    }
+  ]
+}

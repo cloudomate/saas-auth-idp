@@ -1,0 +1,22 @@
+{
+  "root_level": "tenant",
+  "leaf_level": "workspace",
+  "levels": [
+    {
+      "name": "tenant",
+      "display_name": "Organization",
+      "plural": "organizations",
+      "url_path": "tenant",
+      "roles": ["admin", "member"],
+      "is_root": true
+    },
+    {
+      "name": "workspace",
+      "display_name": "Workspace",
+      "plural": "workspaces",
+      "url_path": "workspaces",
+      "roles": ["admin", "member", "viewer"],
+      "is_root": false
+    }
+  ]
+}

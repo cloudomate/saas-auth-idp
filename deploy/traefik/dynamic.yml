@@ -1,0 +1,58 @@
+# Traefik Dynamic Configuration for SaaS Starter Kit
+# ForwardAuth middleware for authentication and authorization
+
+http:
+  # Middlewares
+  middlewares:
+    auth-gate:
+      forwardAuth:
+        address: "http://authz:8002/gate"
+        authRequestHeaders:
+          - "Authorization"
+          - "X-Workspace-ID"
+        authResponseHeaders:
+          - "X-User-ID"
+          - "X-User-Email"
+          - "X-Tenant-ID"
+          - "X-Workspace-ID"
+          - "X-Role"
+          - "X-Is-Platform-Admin"
+
+  # Routers
+  routers:
+    # Public auth routes - NO auth required (highest priority)
+    api-public:
+      rule: "PathPrefix(`/api/v1/auth`) || PathPrefix(`/api/v1/health`) || PathPrefix(`/api/v1/tenant/plans`)"
+      priority: 20
+      entryPoints:
+        - web
+      service: api
+
+    # Protected API routes - requires auth
+    api:
+      rule: "PathPrefix(`/api/v1`)"
+      priority: 1
+      entryPoints:
+        - web
+      middlewares:
+        - auth-gate
+      service: api
+
+    # Casdoor IdP routes
+    casdoor:
+      rule: "PathPrefix(`/casdoor`) || PathPrefix(`/.well-known`)"
+      entryPoints:
+        - web
+      service: casdoor
+
+  # Services
+  services:
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://api:8000"
+
+    casdoor:
+      loadBalancer:
+        servers:
+          - url: "http://casdoor:8000"

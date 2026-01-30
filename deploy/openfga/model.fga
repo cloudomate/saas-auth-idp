@@ -1,0 +1,63 @@
+model
+  schema 1.1
+
+# SaaS Starter Kit - Generic Hierarchy Authorization Model
+#
+# This model supports pluggable hierarchies using a generic "container" type.
+# Containers can represent: tenants, workspaces, projects, teams, environments, etc.
+#
+# The hierarchy is enforced via parent relationships, allowing:
+# - 2-level: tenant → workspace
+# - 3-level: tenant → team → project
+# - N-level: any depth via parent chains
+
+type user
+
+# Platform-level: Platform admins can manage all containers
+type platform
+  relations
+    define admin: [user]
+
+# Generic container: Represents any level in the hierarchy
+# Examples: tenant, workspace, project, team, environment, service
+type container
+  relations
+    # Parent relationship (for hierarchy traversal)
+    define parent: [container]
+
+    # Direct roles at this container level
+    define admin: [user]
+    define member: [user] or admin
+    define viewer: [user] or member
+
+    # Inherited permissions from parent
+    define parent_admin: admin from parent
+    define parent_member: member from parent
+
+    # Effective permissions (direct + inherited)
+    define can_manage: admin or parent_admin
+    define can_write: member or can_manage or parent_member
+    define can_read: viewer or can_write
+
+# Generic resource: For any resource scoped to a container
+# Examples: notebook, job, dataset, file, secret, etc.
+type resource
+  relations
+    define container: [container]
+    define owner: [user]
+
+    # Permissions inherit from container
+    define can_manage: owner or can_manage from container
+    define can_write: can_write from container
+    define can_read: can_read from container
+
+# API Key: Scoped to a container with limited permissions
+type api_key
+  relations
+    define container: [container]
+    define owner: [user]
+
+    # API keys inherit read/write but not manage
+    define can_use: owner
+    define can_read: can_read from container
+    define can_write: can_write from container

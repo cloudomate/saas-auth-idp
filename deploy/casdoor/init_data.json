@@ -1,0 +1,91 @@
+{
+  "organizations": [
+    {
+      "owner": "admin",
+      "name": "saas-platform",
+      "createdTime": "2024-01-01T00:00:00Z",
+      "displayName": "SaaS Platform",
+      "websiteUrl": "http://localhost:3000",
+      "favicon": "",
+      "passwordType": "plain",
+      "passwordSalt": "",
+      "phonePrefix": "1",
+      "defaultAvatar": "https://cdn.casbin.org/img/casbin.svg",
+      "masterPassword": "",
+      "enableSoftDeletion": false
+    }
+  ],
+  "applications": [
+    {
+      "owner": "admin",
+      "name": "saas-app",
+      "createdTime": "2024-01-01T00:00:00Z",
+      "displayName": "SaaS Starter Kit",
+      "logo": "https://cdn.casbin.org/img/casbin.svg",
+      "homepageUrl": "http://localhost:3000",
+      "description": "SaaS Starter Kit Application",
+      "organization": "saas-platform",
+      "cert": "saas-cert",
+      "enablePassword": true,
+      "enableSignUp": true,
+      "enableSigninSession": true,
+      "enableAutoSignin": false,
+      "enableCodeSignin": false,
+      "enableSamlCompress": false,
+      "samlReplyUrl": "",
+      "clientId": "saas-client-id",
+      "clientSecret": "saas-client-secret",
+      "redirectUris": [
+        "http://localhost:3000/auth/callback",
+        "http://localhost:4455/api/v1/auth/callback"
+      ],
+      "tokenFormat": "JWT",
+      "expireInHours": 24,
+      "refreshExpireInHours": 168,
+      "signupUrl": "",
+      "signinUrl": "",
+      "forgetUrl": "",
+      "affiliationUrl": "",
+      "termsOfUse": "",
+      "signupHtml": "",
+      "signinHtml": ""
+    }
+  ],
+  "users": [
+    {
+      "owner": "saas-platform",
+      "name": "admin",
+      "createdTime": "2024-01-01T00:00:00Z",
+      "id": "admin",
+      "type": "normal-user",
+      "password": "admin123",
+      "displayName": "Admin",
+      "avatar": "https://cdn.casbin.org/img/casbin.svg",
+      "email": "admin@localhost",
+      "phone": "",
+      "address": [],
+      "affiliation": "",
+      "tag": "",
+      "region": "",
+      "isAdmin": true,
+      "isGlobalAdmin": true,
+      "isForbidden": false,
+      "isDeleted": false,
+      "signupApplication": "saas-app",
+      "createdIp": ""
+    }
+  ],
+  "certs": [
+    {
+      "owner": "admin",
+      "name": "saas-cert",
+      "createdTime": "2024-01-01T00:00:00Z",
+      "displayName": "SaaS Certificate",
+      "scope": "JWT",
+      "type": "x509",
+      "cryptoAlgorithm": "RS256",
+      "bitSize": 4096,
+      "expireInYears": 20
+    }
+  ]
+}
