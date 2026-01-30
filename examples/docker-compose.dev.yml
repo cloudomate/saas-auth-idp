@@ -1,0 +1,40 @@
+version: '3.8'
+
+# Development docker-compose with hot-reloading
+# Usage: docker compose -f docker-compose.dev.yml up
+
+services:
+  # React Frontend with Vite dev server
+  react-app:
+    build:
+      context: ./react-app
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./react-app/src:/app/src
+      - ./react-app/public:/app/public
+    depends_on:
+      - sample-api
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8001
+    networks:
+      - examples-network
+
+  # Sample API with air for hot-reloading (optional)
+  sample-api:
+    build:
+      context: ./sample-api
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - GIN_MODE=debug
+    networks:
+      - examples-network
+
+networks:
+  examples-network:
+    driver: bridge

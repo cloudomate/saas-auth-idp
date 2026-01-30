@@ -1,0 +1,8 @@
+# Environment files (contain secrets!)
+.env
+.env.local
+!.env.example
+
+# Docker volumes if stored locally
+postgres_data/
+shared_data/

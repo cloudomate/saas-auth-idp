@@ -366,6 +366,38 @@ cd authz && go run ./cmd/authz
 4. Set `DEV_MODE=false`
 5. Configure SSL/TLS on Traefik
 
+## Example Application
+
+A complete example React application is available in [examples/react-app/](examples/react-app/):
+
+```bash
+cd examples/react-app
+npm install
+npm run dev
+```
+
+The example demonstrates:
+- OAuth and email/password authentication
+- Plan selection and organization setup
+- Workspace management and member invitations
+- Protected routes and role-based access
+
+## Documentation
+
+Detailed documentation is available in the [docs/](docs/) folder:
+
+- **[Getting Started](docs/getting-started.md)** - Quick start guide and basic setup
+- **[Architecture](docs/architecture.md)** - System architecture and component overview
+- **[React SDK Reference](docs/react-sdk.md)** - Complete SDK documentation with all hooks and components
+- **[API Reference](docs/api-reference.md)** - REST API endpoints and examples
+- **[Authentication Guide](docs/authentication.md)** - OAuth, email/password, and API key flows
+- **[Authorization Guide](docs/authorization.md)** - OpenFGA permissions and RBAC
+- **[ReBAC & ABAC Guide](docs/rebac-abac-guide.md)** - Relationship and attribute-based access control patterns
+- **[Hierarchy Configuration](docs/hierarchy.md)** - Customizing organizational structures
+- **[Configuration Guide](docs/configuration.md)** - Environment variables and deployment
+
+For AI assistants working on this codebase, see [CLAUDE.md](CLAUDE.md) for project context.
+
 ## License
 
 MIT

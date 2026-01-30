@@ -139,20 +139,21 @@ export interface AuthState {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  error: string | null
-  needsRootSetup: boolean
+  error: AuthError | null
+  needsTenantSetup: boolean
 }
 
 export interface AuthActions {
   loginWithGoogle: (redirectUri?: string) => Promise<void>
   loginWithGithub: (redirectUri?: string) => Promise<void>
+  handleOAuthCallback: (code: string, state: string) => Promise<void>
   loginWithEmail: (email: string, password: string) => Promise<void>
-  signup: (email: string, password: string, name?: string) => Promise<void>
+  signup: (email: string, password: string, name: string, plan?: PlanTier) => Promise<void>
   verifyEmail: (token: string) => Promise<void>
   forgotPassword: (email: string) => Promise<void>
   resetPassword: (token: string, newPassword: string) => Promise<void>
   logout: () => void
-  refreshToken: () => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 // Hierarchy context types
@@ -208,11 +209,13 @@ export interface UseTenantReturn {
   tenant: Container | null
   subscription: Subscription | null
   plan: Plan | null
+  plans: Plan[]
   isLoading: boolean
-  error: string | null
-  selectPlan: (plan: string) => Promise<void>
-  setupOrganization: (name: string, slug: string) => Promise<void>
+  error: { error: string; message: string } | null
+  selectPlan: (tier: PlanTier) => Promise<{ tenantCreated: boolean; redirectTo?: string }>
+  setupOrganization: (name: string, slug: string, emailDomain?: string) => Promise<Container>
   checkSlug: (slug: string) => Promise<boolean>
+  refreshTenant: () => Promise<void>
 }
 
 export interface UseWorkspacesReturn {

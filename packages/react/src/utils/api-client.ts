@@ -2,16 +2,14 @@ import type { ApiError } from '../types'
 
 export class SaasApiClient {
   private baseUrl: string
-  private storagePrefix: string
   private getToken: () => string | null
 
   constructor(
     baseUrl: string,
-    storagePrefix: string,
+    _storagePrefix: string,
     getToken: () => string | null
   ) {
     this.baseUrl = baseUrl.replace(/\/$/, '')
-    this.storagePrefix = storagePrefix
     this.getToken = getToken
   }
 
@@ -22,9 +20,13 @@ export class SaasApiClient {
     const url = `${this.baseUrl}${endpoint}`
     const token = this.getToken()
 
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+    }
+
+    // Merge existing headers if they're a plain object
+    if (options.headers && typeof options.headers === 'object' && !Array.isArray(options.headers)) {
+      Object.assign(headers, options.headers)
     }
 
     if (token) {

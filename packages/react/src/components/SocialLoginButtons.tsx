@@ -1,10 +1,10 @@
-import React from 'react'
 import { useSaasAuth } from '../hooks/useSaasAuth'
-import type { AuthProvider } from '../types'
+
+type SocialProvider = 'google' | 'github'
 
 export interface SocialLoginButtonsProps {
   /** Which providers to show */
-  providers?: AuthProvider[]
+  providers?: SocialProvider[]
   /** Custom redirect URI after OAuth */
   redirectUri?: string
   /** Called on successful login */
@@ -16,12 +16,12 @@ export interface SocialLoginButtonsProps {
   /** Custom class for buttons */
   buttonClassName?: string
   /** Custom button labels */
-  labels?: Partial<Record<AuthProvider, string>>
+  labels?: Partial<Record<SocialProvider, string>>
   /** Whether buttons are disabled */
   disabled?: boolean
 }
 
-const defaultLabels: Record<AuthProvider, string> = {
+const defaultLabels: Record<SocialProvider, string> = {
   google: 'Continue with Google',
   github: 'Continue with GitHub',
 }
@@ -50,7 +50,7 @@ export function SocialLoginButtons({
 }: SocialLoginButtonsProps) {
   const { loginWithGoogle, loginWithGithub, isLoading } = useSaasAuth()
 
-  const handleLogin = async (provider: AuthProvider) => {
+  const handleLogin = async (provider: SocialProvider) => {
     try {
       if (provider === 'google') {
         await loginWithGoogle(redirectUri)

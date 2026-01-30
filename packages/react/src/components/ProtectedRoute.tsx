@@ -1,4 +1,4 @@
-import React, { type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { useSaasAuth } from '../hooks/useSaasAuth'
 
 export interface ProtectedRouteProps {

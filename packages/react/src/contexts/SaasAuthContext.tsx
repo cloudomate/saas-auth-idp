@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useCallback, useEffect, useState, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useCallback, useEffect, useState, useMemo, type ReactNode } from 'react'
 import type {
   User,
-  AuthState,
   AuthError,
   SaasAuthConfig,
   PlanTier,
